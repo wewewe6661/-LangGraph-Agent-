@@ -1,0 +1,67 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: smart-data-agent-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smart_data_agent}
+      MYSQL_USER: ${MYSQL_USER:-smart_agent}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smart_agent_password}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    container_name: smart-data-agent-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME:-Smart Data Agent}
+      APP_ENV: ${APP_ENV:-development}
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-smart_data_agent}
+      MYSQL_USER: ${MYSQL_USER:-smart_agent}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smart_agent_password}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai-compatible}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0}
+      SQL_DEFAULT_LIMIT: ${SQL_DEFAULT_LIMIT:-100}
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  streamlit:
+    build: .
+    container_name: smart-data-agent-streamlit
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_BASE_URL: http://api:8000
+    ports:
+      - "8501:8501"
+    command: streamlit run streamlit_app/app.py --server.port 8501 --server.address 0.0.0.0
+
+volumes:
+  mysql_data:
