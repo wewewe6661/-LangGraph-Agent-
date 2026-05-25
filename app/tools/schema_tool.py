@@ -3,7 +3,6 @@
 from typing import Any
 
 
-# 这里使用代码内置 Schema 描述，保证 Text-to-SQL 可以稳定理解字段含义。
 BUSINESS_SCHEMA: dict[str, dict[str, Any]] = {
     "customers": {
         "description": "客户表，保存客户基础信息，可用于城市、年龄、会员等级等维度分析。",

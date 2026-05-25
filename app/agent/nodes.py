@@ -14,8 +14,7 @@ from app.tools.sql_tool import SQLValidationError, execute_safe_select, validate
 
 
 def get_llm() -> ChatOpenAI:
-    """创建 OpenAI 兼容的大模型客户端。"""
-    if not settings.llm_api_key or settings.llm_api_key == "your_api_key_here":
+    if not settings.llm_api_key:
         raise RuntimeError("大模型 API Key 未配置，请在 .env 中设置 LLM_API_KEY。")
 
     return ChatOpenAI(
@@ -27,7 +26,6 @@ def get_llm() -> ChatOpenAI:
 
 
 def understand_question(state: AgentState) -> AgentState:
-    """理解用户问题，识别趋势、排行、占比等分析意图。"""
     if state.get("error"):
         return state
 
@@ -42,7 +40,6 @@ def understand_question(state: AgentState) -> AgentState:
 
 
 def retrieve_schema(state: AgentState) -> AgentState:
-    """读取业务 Schema 描述，为 Text-to-SQL 提供字段语义。"""
     if state.get("error"):
         return state
 
@@ -50,7 +47,6 @@ def retrieve_schema(state: AgentState) -> AgentState:
 
 
 def generate_sql(state: AgentState) -> AgentState:
-    """调用大模型把自然语言问题转换为 MySQL SELECT 查询。"""
     if state.get("error"):
         return state
 

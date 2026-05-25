@@ -1,38 +1,38 @@
 # Smart Data Agent
 
-基于 **LangGraph + FastAPI + Streamlit + MySQL** 的智能数据分析 Agent 系统。用户可以输入中文自然语言问题，系统会自动完成业务意图理解、Schema 上下文获取、Text-to-SQL、SQL 安全校验、MySQL 查询、结果解释和图表推荐。
+这是我做的一个自然语言查数项目，主要解决一个很常见的问题：业务同学想临时看数据，但不一定会写 SQL。
 
-当前项目使用模拟电商订单数据，适合用于演示自然语言数据分析、Text-to-SQL 工程落地和 LangGraph 多节点 Agent 编排。
+项目的使用方式比较直接：在页面里输入中文问题，比如“哪个城市的订单量最高？”或者“最近 30 天销售额趋势怎么样？”，后端会生成 SQL、做安全校验、查询 MySQL，然后把结果整理成表格、分析结论和图表。
+
+这个项目里我重点做了两件事：一是用 LangGraph 把一次分析请求拆成多个节点，方便调试和扩展；二是给 Text-to-SQL 加了一层 SQL 安全校验，避免模型生成危险语句后直接执行。
 
 ---
 
-## 功能特性
+## 主要功能
 
-- 支持中文自然语言数据查询
-- 基于业务 Schema 生成 MySQL 查询 SQL
-- 使用 LangGraph 编排多节点 Agent 工作流
-- SQL 安全校验：只允许执行 `SELECT` 查询
-- 支持 MySQL 业务数据查询和分析结果生成
-- 自动推荐折线图、柱状图、饼图或表格
-- 使用 Streamlit 构建可视化交互页面
-- 左侧会话记忆：支持新建、切换、删除会话
-- 每个会话独立保存历史查询记录
-- 提供 FastAPI 接口和 Swagger 文档
-- 使用 Docker Compose 管理 MySQL 服务
+- 中文自然语言查询 MySQL 数据
+- 根据业务 Schema 生成查询 SQL
+- 使用 LangGraph 编排分析流程
+- 执行前校验 SQL，只允许 `SELECT`
+- 查询结果自动生成中文分析结论
+- 根据结果推荐折线图、柱状图、饼图或表格
+- Streamlit 页面展示 SQL、结果表格、结论和图表
+- 左侧支持多会话切换、删除和独立历史记录
+- FastAPI 提供分析接口、历史记录接口和健康检查接口
 
 ---
 
 ## 技术栈
 
-| 层级 | 技术 |
+| 模块 | 技术 |
 | --- | --- |
-| 后端服务 | Python, FastAPI, Pydantic, Uvicorn |
-| Agent 编排 | LangGraph, LangChain |
-| 大模型接口 | OpenAI-compatible API, DeepSeek |
+| 后端接口 | Python, FastAPI, Pydantic, Uvicorn |
+| Agent 工作流 | LangGraph, LangChain |
+| 大模型调用 | OpenAI-compatible API, DeepSeek |
 | 数据库 | MySQL 8.0 |
 | 数据库访问 | SQLAlchemy, PyMySQL |
 | 前端页面 | Streamlit, Pandas, Plotly |
-| 部署与运行 | Docker, Docker Compose |
+| 部署运行 | Docker, Docker Compose |
 | 测试 | Pytest, FastAPI TestClient |
 
 ---
@@ -47,26 +47,26 @@ smart-data-agent/
 │   │   ├── routes.py              # API 路由
 │   │   └── schemas.py             # 请求与响应模型
 │   ├── core/
-│   │   ├── config.py              # 环境变量配置
-│   │   └── database.py            # 数据库连接与查询工具
+│   │   ├── config.py              # 配置读取
+│   │   └── database.py            # MySQL 连接和查询封装
 │   ├── agent/
-│   │   ├── graph.py               # LangGraph 工作流定义
-│   │   ├── state.py               # Agent 状态定义
-│   │   ├── nodes.py               # Agent 节点实现
+│   │   ├── graph.py               # LangGraph 工作流
+│   │   ├── state.py               # Agent 状态结构
+│   │   ├── nodes.py               # 工作流节点
 │   │   └── prompts.py             # Prompt 模板
 │   ├── tools/
-│   │   ├── sql_tool.py            # SQL 校验与执行辅助函数
+│   │   ├── sql_tool.py            # SQL 校验和安全执行
 │   │   ├── schema_tool.py         # 业务 Schema 描述
-│   │   └── chart_tool.py          # 图表推荐逻辑
+│   │   └── chart_tool.py          # 图表推荐
 │   └── services/
-│       └── analysis_service.py    # API 与 Agent 之间的服务层
+│       └── analysis_service.py    # API 与 Agent 的衔接层
 ├── streamlit_app/
-│   └── app.py                     # Streamlit 前端页面
+│   └── app.py                     # 前端页面
 ├── sql/
-│   └── init.sql                   # MySQL 表结构与模拟数据
+│   └── init.sql                   # 表结构和样例数据
 ├── tests/
-│   ├── test_sql_validate.py       # SQL 安全校验测试
-│   └── test_api.py                # API 接口测试
+│   ├── test_sql_validate.py       # SQL 校验测试
+│   └── test_api.py                # API 测试
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -76,140 +76,115 @@ smart-data-agent/
 
 ---
 
-## 系统流程
+## 整体流程
 
 ```text
 用户输入中文问题
   ↓
-Streamlit 前端页面
+Streamlit 调用 FastAPI
   ↓
-FastAPI /api/analyze
+AnalysisService 调用 Agent
   ↓
-AnalysisService
+LangGraph 按节点处理
   ↓
-LangGraph Agent
+获取 Schema 上下文
   ↓
-understand_question：识别业务分析意图
+生成 SQL
   ↓
-retrieve_schema：获取业务 Schema 上下文
+校验 SQL
   ↓
-generate_sql：生成 MySQL SELECT SQL
+查询 MySQL
   ↓
-validate_sql：校验 SQL 安全性
+生成分析结论
   ↓
-execute_sql：执行 MySQL 查询
+推荐图表
   ↓
-analyze_result：生成中文业务分析结论
-  ↓
-recommend_chart：推荐图表类型
-  ↓
-Streamlit 展示 SQL、表格、结论和图表
+返回前端展示
 ```
 
-LangGraph 工作流主要位于：
+LangGraph 节点顺序：
 
 ```text
-app/agent/graph.py
-app/agent/nodes.py
-app/agent/state.py
+understand_question
+retrieve_schema
+generate_sql
+validate_sql
+execute_sql
+analyze_result
+recommend_chart
 ```
 
 ---
 
-## 核心模块
+## 关键实现
 
-### 1. LangGraph Agent 工作流
+### 1. LangGraph 工作流
 
-Agent 被拆分为多个职责明确的节点：
+我没有把整个分析过程写成一个大函数，而是拆成了几个节点：
 
-```text
-understand_question      # 识别分析意图
-retrieve_schema          # 加载业务 Schema
-generate_sql             # 生成 MySQL SELECT SQL
-validate_sql             # 校验 SQL 安全性
-execute_sql              # 查询 MySQL
-analyze_result           # 生成业务分析结论
-recommend_chart          # 推荐图表类型
-```
+- `understand_question`：判断问题类型，比如趋势、排行、占比、明细查询
+- `retrieve_schema`：读取业务表结构说明
+- `generate_sql`：让模型根据问题和 Schema 生成 SQL
+- `validate_sql`：执行前检查 SQL 是否安全
+- `execute_sql`：查询 MySQL
+- `analyze_result`：把结果整理成中文结论
+- `recommend_chart`：根据字段推荐图表
 
-这种拆分方式便于调试、扩展和定位问题。
+这样做的好处是每一步都比较清楚，后面要加权限校验、SQL 自动修复、缓存或者 Schema RAG，也比较容易接进去。
 
-### 2. Schema-Augmented Text-to-SQL
+### 2. Schema 约束
 
-项目在以下文件中维护业务 Schema 描述：
+Schema 信息维护在 [app/tools/schema_tool.py](app/tools/schema_tool.py)。
 
-```text
-app/tools/schema_tool.py
-```
+里面写了表名、字段含义、表之间的关系，以及一些业务口径，比如销售额默认用哪个字段、订单量怎么算、趋势分析按哪个日期字段聚合。
 
-Schema 内容包括：
-
-- 表名
-- 字段名
-- 字段含义
-- 表关系
-- 常用业务指标口径，例如销售额、订单量、成交订单
-
-生成 SQL 时会把这些 Schema 信息注入 Prompt，减少模型生成不存在表名或字段名的概率。
+生成 SQL 时会把这些信息一起传给模型，尽量减少模型编造字段名或者用错表的情况。
 
 ### 3. SQL 安全校验
 
-每一条模型生成的 SQL 在执行前都会经过安全校验：
+Text-to-SQL 不能直接相信模型输出，所以我在 [app/tools/sql_tool.py](app/tools/sql_tool.py) 里加了校验：
 
-```text
-app/tools/sql_tool.py
-```
+- 只允许 `SELECT`
+- 不允许多条 SQL
+- 不允许 SQL 注释
+- 拒绝 `DELETE`、`UPDATE`、`INSERT`、`DROP`、`ALTER`、`TRUNCATE` 等危险关键字
+- 没有 `LIMIT` 时自动补一个默认限制
 
-当前规则包括：
+这个版本还是规则校验。真要放到企业里，还需要配合只读账号、字段权限、查询超时和 SQL AST 校验。
 
-- 只允许 `SELECT` 查询
-- 禁止多条 SQL 语句
-- 禁止 SQL 注释
-- 禁止 `DELETE`、`UPDATE`、`INSERT`、`DROP`、`ALTER`、`TRUNCATE` 等危险关键字
-- 如果缺少 `LIMIT`，自动追加默认限制
+### 4. 前端会话
 
-### 4. Streamlit 会话记忆
-
-前端左侧提供类似对话应用的会话列表：
-
-- 新建会话
-- 切换会话
-- 删除会话
-- 保留每个会话最近一次分析结果
-- 保留每个会话独立的历史查询记录
-
-前端实现文件：
-
-```text
-streamlit_app/app.py
-```
+前端用 Streamlit 做了一个简单的分析页面，左侧可以新建、切换和删除会话。每个会话会保留自己的最近一次结果和历史查询记录，方便对比不同问题的分析结果。
 
 ---
 
-## 数据来源
+## 数据说明
 
-项目使用模拟电商订单数据，初始化脚本位于：
+为了方便本地运行，项目在 [sql/init.sql](sql/init.sql) 里准备了一组电商订单样例数据。
 
-```text
-sql/init.sql
-```
-
-主要数据表如下：
+主要表：
 
 | 表名 | 说明 |
 | --- | --- |
 | customers | 客户信息，包括城市、年龄、会员等级等 |
 | products | 商品信息，包括商品名称、品类、价格、成本等 |
-| orders | 订单事实表，用于销售额、订单量、趋势、排行分析 |
-| analysis_logs | 后端分析日志，记录问题、SQL、分析结论等 |
+| orders | 订单事实表，用于销售额、订单量、趋势和排行分析 |
+| analysis_logs | 分析日志表，记录问题、SQL、结论和图表类型 |
 
-模拟数据覆盖城市排行、销售趋势、品类占比、渠道分析等常见业务分析场景。
+可以覆盖的典型问题：
+
+```text
+哪个城市的订单量最高？
+按商品类别统计销售额占比。
+最近 30 天销售额趋势怎么样？
+不同渠道的销售额排名如何？
+```
 
 ---
 
 ## 环境变量
 
-复制示例配置文件：
+复制配置模板：
 
 ```bash
 cp .env.example .env
@@ -221,24 +196,20 @@ Windows PowerShell：
 copy .env.example .env
 ```
 
-配置大模型服务：
+配置大模型接口：
 
 ```env
 LLM_PROVIDER=openai-compatible
-LLM_API_KEY=your_api_key_here
+LLM_API_KEY=
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
 ```
 
-注意事项：
-
-- 不要提交 `.env` 文件
-- 不要把真实 API Key 写入 README、截图或演示材料
-- 公开仓库只保留 `.env.example` 作为配置模板
+真实的 `.env` 不要提交到仓库，也不要在演示截图里展示 API Key。
 
 ---
 
-## 快速启动
+## 本地启动
 
 ### 1. 安装依赖
 
@@ -254,31 +225,26 @@ python -m venv .venv
 docker compose up -d mysql
 ```
 
-当前 MySQL 容器端口映射为：
+MySQL 映射到本机端口：
 
 ```text
 localhost:3307 -> container:3306
 ```
 
-### 3. 启动 FastAPI 后端
+### 3. 启动 FastAPI
 
 ```powershell
 .venv\Scripts\python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-接口文档：
-
-```text
-http://localhost:8000/docs
-```
-
-健康检查：
+访问：
 
 ```text
 http://localhost:8000/health
+http://localhost:8000/docs
 ```
 
-### 4. 启动 Streamlit 前端
+### 4. 启动 Streamlit
 
 打开另一个终端：
 
@@ -298,13 +264,13 @@ http://localhost:8501
 
 ## Docker Compose
 
-项目也提供完整 Docker Compose 配置：
+也可以直接启动完整服务：
 
 ```bash
 docker compose up --build
 ```
 
-包含服务：
+服务包括：
 
 ```text
 mysql
@@ -312,19 +278,17 @@ api
 streamlit
 ```
 
-本地开发时，通常可以只用 Docker 启动 MySQL，然后在本地虚拟环境中运行 FastAPI 和 Streamlit，这样更方便调试。
+本地调试时，我一般只用 Docker 启动 MySQL，FastAPI 和 Streamlit 放在本地虚拟环境里跑，这样排查问题更方便。
 
 ---
 
-## API 接口
+## API
 
 ### 健康检查
 
 ```http
 GET /health
 ```
-
-响应示例：
 
 ```json
 {
@@ -344,7 +308,7 @@ Content-Type: application/json
 }
 ```
 
-响应字段示例：
+响应字段包括：
 
 ```json
 {
@@ -371,32 +335,18 @@ Content-Type: application/json
 GET /api/history?limit=20
 ```
 
-说明：Streamlit 左侧会话历史保存在浏览器会话状态中，`/api/history` 返回的是后端写入 MySQL 的分析日志。
-
----
-
-## 演示问题
-
-```text
-哪个城市的订单量最高？
-按商品类别统计销售额占比。
-最近 30 天销售额趋势怎么样？
-不同渠道的销售额排名如何？
-上个月销售额下降的原因可能是什么？
-```
+这里返回的是后端写入 MySQL 的分析日志；前端左侧的会话历史保存在当前浏览器会话中。
 
 ---
 
 ## 测试
-
-在项目根目录执行：
 
 ```powershell
 cd E:\TSDK\smart-data-agent
 .venv\Scripts\python -m pytest tests
 ```
 
-当前测试覆盖：
+测试覆盖：
 
 - SELECT SQL 校验
 - 危险 SQL 拒绝
@@ -407,11 +357,9 @@ cd E:\TSDK\smart-data-agent
 
 ---
 
-## 注意事项
+## 说明
 
-- 当前数据为模拟电商数据，主要用于项目演示。
-- Schema 描述维护在代码中，并不是从数据库动态生成。
-- 当前实现属于 Schema-Augmented Text-to-SQL，不是完整的向量数据库 RAG 系统。
-- Streamlit 会话记忆保存在浏览器会话状态中，刷新页面或重启服务后不会持久化。
-- Text-to-SQL 效果依赖大模型输出质量，复杂问题可能需要继续优化 Prompt 或 Schema 描述。
-- SQL 校验目前基于规则实现，生产环境建议配合只读数据库账号和更严格的 SQL AST 校验。
+- 样例数据只用于本地开发和功能验证，不包含真实业务数据。
+- Schema 目前写在代码里，适合表数量较少的场景；如果接企业数据，可以改成读取数据字典或做 Schema RAG。
+- Streamlit 会话记录保存在浏览器会话状态里，刷新或重启后不会持久化。
+- SQL 校验是规则实现，正式环境建议增加只读账号、SQL AST 校验、字段级权限和审计日志。

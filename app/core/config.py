@@ -26,8 +26,8 @@ class Settings(BaseSettings):
 
     llm_provider: str = "openai-compatible"
     llm_api_key: str = Field(default="", repr=False)
-    llm_base_url: str = "https://api.openai.com/v1"
-    llm_model: str = "gpt-4o-mini"
+    llm_base_url: str = "https://api.deepseek.com/v1"
+    llm_model: str = "deepseek-chat"
     llm_temperature: float = 0
 
     sql_default_limit: int = 100

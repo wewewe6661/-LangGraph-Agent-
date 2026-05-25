@@ -36,8 +36,8 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-smart_agent_password}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai-compatible}
       LLM_API_KEY: ${LLM_API_KEY:-}
-      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
-      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.deepseek.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-deepseek-chat}
       LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0}
       SQL_DEFAULT_LIMIT: ${SQL_DEFAULT_LIMIT:-100}
       API_BASE_URL: http://api:8000

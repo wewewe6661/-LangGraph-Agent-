@@ -14,7 +14,7 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 DEFAULT_QUESTION = "请输入你的问题"
 
 
-st.set_page_config(page_title="智能数据分析 Agent", layout="wide")
+st.set_page_config(page_title="智能数据分析助手", layout="wide")
 
 
 def call_analyze_api(question: str) -> dict[str, Any]:
@@ -112,7 +112,7 @@ def update_session_after_analysis(question: str, result: dict[str, Any]) -> None
 def render_sidebar_sessions() -> None:
     """在左侧边栏展示会话列表，并支持切换会话。"""
     with st.sidebar:
-        st.header("会话记忆")
+        st.header("分析会话")
 
         if st.button("新建会话", use_container_width=True):
             create_new_session()
@@ -211,8 +211,7 @@ def main() -> None:
     render_sidebar_sessions()
     active_session = get_active_session()
 
-    st.title("基于 LangGraph 的智能数据分析 Agent")
-    
+    st.title("智能数据分析助手")
 
     question = st.text_area(
         "请输入你的业务数据问题",
